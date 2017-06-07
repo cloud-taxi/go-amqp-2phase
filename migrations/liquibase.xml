@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet author="Hepri" id="amqp-1">
+        <createTable tableName="amqp_events">
+            <column autoIncrement="true" name="id" type="SERIAL">
+                <constraints primaryKey="true" primaryKeyName="amqp_events_pk"/>
+            </column>
+            <column name="create_date" type="timestamp"/>
+            <column name="send_date" type="timestamp">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="int4" defaultValue="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="exchange" type="varchar(32)"/>
+            <column name="type" type="varchar(32)"/>
+            <column name="data" type="text"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="Hepri" id="amqp-2" runInTransaction="false">
+        <sql>
+            create index concurrently idx_amqp_events_pending on amqp_events(id) where status = 1;
+        </sql>
+
+        <rollback>
+            drop index concurrently idx_amqp_events_pending;
+        </rollback>
+    </changeSet>
+
+    <changeSet author="Hepri" id="amqp-3" runInTransaction="false">
+        <sql endDelimiter=";GO">
+            <![CDATA[
+                CREATE OR REPLACE FUNCTION notify_amqp_event() RETURNS TRIGGER AS $$
+                BEGIN
+                    IF TG_OP = 'INSERT' THEN
+                        PERFORM pg_notify('amqp_events', (NEW.id)::varchar);
+                    END IF;
+
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;GO
+            ]]>
+        </sql>
+        <rollback>
+            DROP FUNCTION notify_amqp_event();
+        </rollback>
+    </changeSet>
+
+    <changeSet author="Hepri" id="amqp-4" runInTransaction="false">
+        <sql>
+            <![CDATA[
+            CREATE TRIGGER trg_notify_amqp_event
+            after insert on amqp_events for each row
+            EXECUTE PROCEDURE notify_amqp_event();
+            ]]>
+        </sql>
+
+        <rollback>
+            DROP TRIGGER trg_notify_amqp_event ON amqp_events;
+        </rollback>
+    </changeSet>
+
+
+
+</databaseChangeLog>

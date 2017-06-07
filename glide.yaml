@@ -1,0 +1,4 @@
+package: git.cloud-taxi.ru/cloud-taxi/go_amqp_2phase
+import:
+- package: github.com/jinzhu/gorm
+  version: ~1.0.0
