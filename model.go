@@ -23,7 +23,7 @@ type AMQPEvent struct {
 	ID         uint `gorm:"primary_key"`
 	Status     int
 	CreateDate time.Time
-	SendDate   time.Time
+	SendDate   *time.Time
 	Exchange   string
 	Type       string
 	Data       string
